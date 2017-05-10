@@ -1,31 +1,145 @@
 import java.sql.*;
-import java.awt.BorderLayout;
-import java.awt.Container;
-import java.awt.Dimension;
 //import com.microsoft.sqlserver.jbdc.*;
 import java.io.*;
 import java.util.*;
-import javax.swing.*; 
+
 
 public class Main {
 	
 	public static String connectionString = "jdbc:sqlserver://10.1.14.17\\CSSQLSERVER:1433;";
+	
 	public static void main(String[] args) {
 		String[] info = getInfo();
 		
 		connectionString += "database=" + info[0] + ";user=" + info[1] + ";password=" + info[2] + ";";
-		while (1!=2){
-//			String[][]data = null;
-			final String[] views = getViews();
-	        javax.swing.SwingUtilities.invokeLater(new Runnable() {
-	            public void run() {
-	                createAndShowGUI(views);
-	            }
-	        });
-			final String[][] data = databaseThings();
-			printData(data);
-	        
+		
+		String decision = whatToDo();
+//		System.out.println(decision);
+		if (decision.equals("1")) {
+			insertGrades();
 		}
+		else if (decision.equals("2")){
+			Views();
+		}
+		else if (decision.equals("3")){
+			transcript();
+		}
+		
+		main(args); // probably not good practice to call this
+	}
+	
+	public static void transcript(){
+		String studentName = askForStudentName();
+		getTheTranscript(studentName);
+	}
+	
+	public static void getTheTranscript(String studentName) {
+		Connection connection = null;
+		Statement statement = null;
+		ResultSet resultSet = null;	
+		
+		try {
+			connection = DriverManager.getConnection(connectionString);
+			String selectSql = "SELECT studentName, className, semester, grade, GPA as CumGPA, team FROM ListStudentsByGPA " + 
+							   "JOIN Grades ON ListStudentsByGPA.ID = Grades.studentId " + 
+							   "JOIN Classes ON Grades.classId = Classes.Id " + 
+							   "JOIN Sports ON ListStudentsByGPA.ID = Sports.studentId " + 
+							   "WHERE StudentName Like '" + studentName+ "' " + 
+							   "ORDER BY semester DESC;";
+			statement = connection.createStatement();
+			resultSet = statement.executeQuery(selectSql);
+			ResultSetMetaData rsmd = resultSet.getMetaData();
+			int columnsNumber = rsmd.getColumnCount(); // columns number
+			
+			while(resultSet.next()){
+				for (int i = 1; i < columnsNumber; i++){
+					System.out.print(resultSet.getString(i) + " ");
+				}
+				System.out.println("");
+			}
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		finally {
+			if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}
+			if (statement != null) try { statement.close(); } catch(Exception e) {}
+			if(connection != null) try { connection.close(); } catch(Exception e) {}
+		}
+	}
+	
+	
+	public static String askForStudentName() {
+		Scanner scan = new Scanner(System.in);
+		System.out.println("Enter in the name of the student");
+		return scan.nextLine();
+	}
+	public static void insertGrades() {
+		String[] data = acquireDataForGrades();
+		insertTheAcquiredData(data);
+	}
+
+	
+	public static String[] acquireDataForGrades() {
+		String[] data = new String[4];
+		Scanner scan = new Scanner(System.in);
+		System.out.println("Enter the exact class name");
+		data[0] = scan.nextLine();
+		System.out.println("Enter current Semester");
+		data[1] = scan.nextLine();
+		System.out.println("Enter the current students name");
+		data[2] = scan.nextLine();
+		System.out.println("enter the grade the student recieved");
+		data[3] = scan.nextLine();
+		return data;
+	}
+	
+	public static void insertTheAcquiredData(String[] data) {
+		Connection connection = null;
+		Statement statement = null;
+		ResultSet resultSet = null;	
+		
+		try {
+			connection = DriverManager.getConnection(connectionString);
+			String selectSql = "SELECT Id FROM Students Where studentName LIKE '%" + data[2] + "%'";
+			statement = connection.createStatement();
+			resultSet = statement.executeQuery(selectSql);
+			int count = 1;
+			String id = "";
+			while(resultSet.next()){
+				id = resultSet.getString(count);
+			}
+			
+			selectSql = "SELECT Id From Classes Where className = '" + data[0] + "'";
+			statement = connection.createStatement();
+			resultSet = statement.executeQuery(selectSql);
+			count = 1;
+			String className = "";
+			while(resultSet.next()){
+				className = resultSet.getString(count);
+			}
+			
+			selectSql = "Insert Into Grades(classId, semester, studentId, grade) values (" + className + ", '" + data[1] + "', " + Integer.valueOf(id) + ", '" + data[3] + "');";
+			
+			statement = connection.createStatement();
+			statement.executeQuery(selectSql);
+
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		finally {
+			if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}
+			if (statement != null) try { statement.close(); } catch(Exception e) {}
+			if(connection != null) try { connection.close(); } catch(Exception e) {}
+		}
+	}
+	
+	public static void Views() {
+		final String[] views = getViews();
+		String s = "SELECT * FROM " + askForInput(views);
+		String[][] data = databaseThings(s);
+		printData(data);
 	}
 	
 	
@@ -59,40 +173,6 @@ public class Main {
         }
 		return info;
 	}
-	
-	
-    private static void createAndShowGUI(String[] views) {
-        JFrame frame = new JFrame("Student Body Database");
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-//        frame.setSize(400, 500);
-        addComponentsToPane(frame.getContentPane(), views);
-//        JTable(Object[][] rowData, Object[] columnNames)
-
-        frame.pack();
-        frame.setVisible(true);
-    }
-    
-    public static void addComponentsToPane(Container pane, String[] views){
-    	  JButton button = new JButton("Button 1 (PAGE_START)");
-//          pane.add(button, BorderLayout.PAGE_START);
-          JComboBox viewList = new JComboBox(views);
-          pane.add(viewList, BorderLayout.PAGE_START);
-           
-          //Make the center component big, since that's the
-          //typical usage of BorderLayout.
-          button = new JButton("Button 2 (CENTER)");
-          button.setPreferredSize(new Dimension(200, 100));
-          pane.add(button, BorderLayout.CENTER);
-           
-          button = new JButton("Button 3 (LINE_START)");
-          pane.add(button, BorderLayout.LINE_START);
-           
-          button = new JButton("Long-Named Button 4 (PAGE_END)");
-          pane.add(button, BorderLayout.PAGE_END);
-           
-          button = new JButton("5 (LINE_END)");
-          pane.add(button, BorderLayout.LINE_END);
-    }
     
     public static String[] getViews() {
 		Connection connection = null;
@@ -121,23 +201,13 @@ public class Main {
 		return views;
     }
 	
-	
-	public static String[][] databaseThings() {
+	public static String[][] databaseThings(String selectSql) {
 		Connection connection = null;
 		Statement statement = null;
 		ResultSet resultSet = null;	
 		String[][]finalData = null;
 		try {
-//			connection = DriverManager.getConnection(connectionString);
-//			String selectSql = "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE ='VIEW'";
-//			statement = connection.createStatement();
-//			resultSet = statement.executeQuery(selectSql);
-//			while(resultSet.next()){
-//				System.out.println("   " + resultSet.getString(3)); // gets the views specifically
-//			}
-//			
-			String s = "SELECT * FROM " + askForInput();
-			String selectSql = s;
+			connection = DriverManager.getConnection(connectionString);
 			statement = connection.createStatement();
 			resultSet = statement.executeQuery(selectSql);
 			ResultSetMetaData rsmd = resultSet.getMetaData();
@@ -151,7 +221,6 @@ public class Main {
 				}
 				tempData.add(other);
 			}
-
 			finalData = new String[tempData.size()][columnsNumber];
 			for (int i = 0; i < tempData.size(); i++) {
 				String part = tempData.get(i);
@@ -161,7 +230,6 @@ public class Main {
 				}
 			}
 		}
-		
 		catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -173,8 +241,11 @@ public class Main {
 		return finalData;
 	}
 	
-	public static String askForInput() {
+	public static String askForInput(String[] views) {
 		Scanner scan = new Scanner(System.in);
+		for(int i = 0; i < views.length; i++) {
+			System.out.println(views[i]);
+		}
 		System.out.println("Enter the name of the View here ");
 		String move = scan.nextLine();
 		return move;
@@ -187,6 +258,13 @@ public class Main {
 			}
 			System.out.println("\n" + "-------------------");
 		}
+	}
+	
+	public static String whatToDo() {
+		Scanner scan = new Scanner(System.in);
+		System.out.println("Do you want to insert grades (1), see a list of preset views (2), or see a students transcript (3)?");
+		String toDo = scan.nextLine();
+		return toDo;
 	}
 	
 }
