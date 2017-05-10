@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -27,7 +28,6 @@ public class Main {
 			insertGrades();
 		}
 		else if (decision.equals("2")){
-			System.out.println("Called");
 			Views();
 		}
 		else if (decision.equals("3")){
@@ -60,13 +60,20 @@ public class Main {
 			ResultSetMetaData rsmd = resultSet.getMetaData();
 			int columnsNumber = rsmd.getColumnCount(); // columns number
 
-			while(resultSet.next()){
-				for (int i = 1; i < columnsNumber; i++){
-					System.out.print(resultSet.getString(i) + " ");
-				}
-				System.out.println("");
+			String[][]finalData = convertTo2DArray(resultSet, columnsNumber);
+			System.out.println("Student: " + finalData[0][0]); // students name
+			System.out.println("Cumulative GPA: " + finalData[0][4]);
+			System.out.println("Sports: " + finalData[0][5]);
+			System.out.println("Classes: ");
+			int count = 1;
+			for(int i = 0; i < finalData.length; i++){
+				System.out.println("   " + count + ". " + finalData[i][1] + "   " + finalData[i][2] + "   " + finalData[i][3]);
+				count++;
 			}
+
+
 		}
+		
 		catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -232,22 +239,7 @@ public class Main {
 			ResultSetMetaData rsmd = resultSet.getMetaData();
 			int columnsNumber = rsmd.getColumnCount(); // columns number
 
-			ArrayList<String> tempData = new ArrayList<String>();
-			while(resultSet.next()){
-				String other = "";
-				for (int j = 0; j < columnsNumber; j++) {
-					other += resultSet.getString(j+1) +" , "; // Special character that the data won't have
-				}
-				tempData.add(other);
-			}
-			finalData = new String[tempData.size()][columnsNumber];
-			for (int i = 0; i < tempData.size(); i++) {
-				String part = tempData.get(i);
-				String[] almostThere = part.split(" , ");
-				for (int j = 0; j < columnsNumber; j++){
-					finalData[i][j] = almostThere[j];
-				}
-			}
+			finalData = convertTo2DArray(resultSet, columnsNumber);
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -256,6 +248,27 @@ public class Main {
 			if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}
 			if (statement != null) try { statement.close(); } catch(Exception e) {}
 			if(connection != null) try { connection.close(); } catch(Exception e) {}
+		}
+		return finalData;
+	}
+	
+	public static String[][] convertTo2DArray(ResultSet resultSet, int columnsNumber) throws SQLException {
+		String[][]finalData = null;
+		ArrayList<String> tempData = new ArrayList<String>();
+		while(resultSet.next()){
+			String other = "";
+			for (int j = 0; j < columnsNumber; j++) {
+				other += resultSet.getString(j+1) +" , "; // Special character that the data won't have
+			}
+			tempData.add(other);
+		}
+		finalData = new String[tempData.size()][columnsNumber];
+		for (int i = 0; i < tempData.size(); i++) {
+			String part = tempData.get(i);
+			String[] almostThere = part.split(" , ");
+			for (int j = 0; j < columnsNumber; j++){
+				finalData[i][j] = almostThere[j];
+			}
 		}
 		return finalData;
 	}
