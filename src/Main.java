@@ -1,7 +1,15 @@
-import java.sql.*;
-//import com.microsoft.sqlserver.jbdc.*;
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Scanner;
 
 
 public class Main {
@@ -19,11 +27,13 @@ public class Main {
 			insertGrades();
 		}
 		else if (decision.equals("2")){
+			System.out.println("Called");
 			Views();
 		}
 		else if (decision.equals("3")){
 			transcript();
 		}
+
 		main(args); // probably not good practice to call this
 	}
 
@@ -67,14 +77,10 @@ public class Main {
 		}
 	}
 
-//	public static String[] getTableNames() {
-////		SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.yourTableName')
-//	}
-
 
 	public static String askForStudentName() {
 		Scanner scan = new Scanner(System.in);
-		System.out.println("Enter in the name of the student (first and lastname)");
+		System.out.println("Enter in the name of the student");
 		return scan.nextLine();
 	}
 	public static void insertGrades() {
@@ -86,11 +92,11 @@ public class Main {
 	public static String[] acquireDataForGrades() {
 		String[] data = new String[4];
 		Scanner scan = new Scanner(System.in);
-		System.out.println("Enter the exact class name (className)");
+		System.out.println("Enter the exact class name");
 		data[0] = scan.nextLine();
 		System.out.println("Enter current Semester");
 		data[1] = scan.nextLine();
-		System.out.println("Enter the current students name (could be a shorter name but needs to only return 1 name");
+		System.out.println("Enter the current student's name");
 		data[2] = scan.nextLine();
 		System.out.println("enter the grade the student recieved");
 		data[3] = scan.nextLine();
@@ -122,16 +128,27 @@ public class Main {
 				className = resultSet.getString(count);
 			}
 
-			selectSql = "Insert Into Grades(classId, semester, studentId, grade) values (" + className + ", '" + data[1] + "', " + Integer.valueOf(id) + ", '" + data[3] + "');";
-			statement = connection.createStatement();
-			statement.executeQuery(selectSql);
+			  String query = " insert into Grades (classId, semester, studentId, grade)"
+				        + " values (?, ?, ?, ?)";
+
+		      // create the mysql insert preparedstatement
+		      PreparedStatement preparedStmt = connection.prepareStatement(query);
+		      preparedStmt.setString (1, className);
+		      preparedStmt.setString (2, data[1]);
+		      preparedStmt.setInt  (3, Integer.valueOf(id));
+		      preparedStmt.setString(4, data[3]);
+
+		      // execute the preparedstatement
+		      preparedStmt.execute();
+		      
+//		      connection.close();
 
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
 		finally {
-			if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}
+//			if (resultSet != null) try { resultSet.close(); } catch(Exception e) {}
 			if (statement != null) try { statement.close(); } catch(Exception e) {}
 			if(connection != null) try { connection.close(); } catch(Exception e) {}
 		}
@@ -214,8 +231,6 @@ public class Main {
 			resultSet = statement.executeQuery(selectSql);
 			ResultSetMetaData rsmd = resultSet.getMetaData();
 			int columnsNumber = rsmd.getColumnCount(); // columns number
-
-//			I was trying to convert it to a 2-D array so I could easily transition this to a Jtable but never got around to doing the GUI
 
 			ArrayList<String> tempData = new ArrayList<String>();
 			while(resultSet.next()){
